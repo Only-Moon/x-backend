@@ -1,0 +1,128 @@
+openapi: 3.0.3
+info:
+  title: X API
+  description: External memory for AI-generated checklists and notes
+  version: 1.0.0
+
+servers:
+  - url: https://api.yourdomain.com
+
+security:
+  - BearerAuth: []
+
+paths:
+  /api/v1/items:
+    post:
+      summary: Create a new item (checklist or note)
+      operationId: createItem
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateItemRequest"
+      responses:
+        "201":
+          description: Item created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Item"
+
+    get:
+      summary: List items
+      operationId: listItems
+      parameters:
+        - in: query
+          name: type
+          schema:
+            type: string
+            enum: [checklist, note]
+      responses:
+        "200":
+          description: Items list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Item"
+
+  /api/v1/items/{id}:
+    patch:
+      summary: Update an item
+      operationId: updateItem
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateItemRequest"
+      responses:
+        "200":
+          description: Updated item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Item"
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+
+  schemas:
+    CreateItemRequest:
+      type: object
+      required: [type, title, content]
+      properties:
+        type:
+          type: string
+          enum: [checklist, note]
+        title:
+          type: string
+        content:
+          type: object
+        pinned:
+          type: boolean
+          default: false
+
+    UpdateItemRequest:
+      type: object
+      properties:
+        title:
+          type: string
+        content:
+          type: object
+        pinned:
+          type: boolean
+
+    Item:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          type: string
+        title:
+          type: string
+        content:
+          type: object
+        pinned:
+          type: boolean
+        created_by:
+          type: string
+          enum: [chatgpt, user]
+        created_at:
+          type: string
+        updated_at:
+          type: string
