@@ -10,6 +10,8 @@ export function getChatGPTContextId(req) {
     req.headers["x-openai-session-id"] ||
     req.headers["x-openai-user-id"];
 
+  console.log(req.headers["x-openai-conversation-id"]);
+
   if (!raw) return null;
 
   return crypto.createHash("sha256").update(raw).digest("hex");
