@@ -1,18 +1,46 @@
 import crypto from "crypto";
 import { pool } from "../db/index.js";
+import { getChatGPTContextId } from "./chatgptContext.js";
 
 export async function auth(req, res, next) {
-  const header = req.headers.authorization;
-
-  if (!header || !header.startsWith("Bearer ")) {
-    return res.status(401).json({ error: "Unauthorized" });
-  }
-
-  const token = header.replace("Bearer ", "").trim();
-
-  const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
-
   try {
+    // ---------- MODE A: ChatGPT ----------
+    const chatgptContextId = getChatGPTContextId(req);
+
+    if (chatgptContextId) {
+      const result = await pool.query(
+        `
+        INSERT INTO workspaces (token_hash)
+        VALUES ($1)
+        ON CONFLICT (token_hash)
+        DO UPDATE SET token_hash = EXCLUDED.token_hash
+        RETURNING id
+        `,
+        [chatgptContextId]
+      );
+
+      const workspaceId = result.rows[0].id;
+
+      req.workspaceId = workspaceId;
+
+      await pool.query(`SELECT set_config('app.workspace_id', $1, true)`, [
+        workspaceId,
+      ]);
+
+      return next();
+    }
+
+    // ---------- MODE B: App / Widget ----------
+    const header = req.headers.authorization;
+
+    if (!header || !header.startsWith("Bearer ")) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const token = header.replace("Bearer ", "").trim();
+
+    const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+
     const result = await pool.query(
       `
       SELECT id
@@ -29,10 +57,8 @@ export async function auth(req, res, next) {
 
     const workspaceId = result.rows[0].id;
 
-    // attach to request (used by controllers)
     req.workspaceId = workspaceId;
 
-    // SET workspace for RLS (CORRECT WAY)
     await pool.query(`SELECT set_config('app.workspace_id', $1, true)`, [
       workspaceId,
     ]);
