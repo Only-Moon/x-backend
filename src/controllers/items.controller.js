@@ -39,6 +39,8 @@ export async function createItem(req, res) {
 export async function listItems(req, res) {
   const { type } = req.query;
   const workspaceId = req.workspaceId;
+  res.setHeader("X-Debug-Fingerprint", req.__fingerprint);
+
 
   try {
     let result;
